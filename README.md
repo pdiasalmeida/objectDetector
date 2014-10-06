@@ -1,6 +1,6 @@
 # Object Detector #
 
-Unix project for the automatic detection of several objects. It works on BGR images and has so far included the detection of European license plates and indication signs.
+Unix project for the automatic detection of several objects. It works on BGR images.
 
 ## Dependencies ##
 * OpenCV 2.4.9
@@ -8,7 +8,7 @@ Unix project for the automatic detection of several objects. It works on BGR ima
 
 ## Use ##
 
-Build the main program by running 'make' in the base directory and run './plateDetector' to process all images placed in the benchmark folder, results will be saved in 'benchmark_out'. You can use options '-d' and '-o' to specify the directory with the pictures to process and where to save results, respectively.
+Build the main program by running 'make' in the base directory and run './detectObjects' to process all images placed in the benchmark folder, results will be saved in 'benchmark_out'. You can use options '-d' and '-o' to specify the directory with the pictures to process and where to save results, respectively.
 
 You can set which detectors to use in the execution by editing the 'config.xml' file. In this file you can set several of the application's options as well as the detectors to use and the validators that will aid in the reduction of false positives.
 
