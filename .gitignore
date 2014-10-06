@@ -13,3 +13,5 @@ detectObjects
 
 # Images
 traffic/
+out/
+benchmark_out/

@@ -15,7 +15,8 @@ public:
 
 protected:
 	int _conversionFlag;
-	double _areaThershold;
+	double _minAreaThershold;
+	double _maxAreaThershold;
 	std::vector< std::pair<double*, double*> > _ranges;
 };
 

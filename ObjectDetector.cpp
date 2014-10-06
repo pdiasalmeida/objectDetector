@@ -450,11 +450,6 @@ int processDirectory()
 int processImage( std::string imagePath )
 {
 	int status = EXIT_SUCCESS;
-	if( processDir.empty() )
-	{
-		if(!silent) std::cout << "No processing directory given. Proceeding with current directory." << std::endl;
-		processDir = ".";
-	}
 	if( outDir.empty() )
 	{
 		outDir = "out";
@@ -462,11 +457,11 @@ int processImage( std::string imagePath )
 		mkdir(outDir.c_str(), 0777);
 	}
 
-	if( FilesHelper::fileAvailable(processDir, imagePath, validExtensions) )
+	if( FilesHelper::fileAvailable(FilesHelper::getDirName(imagePath), FilesHelper::getFileName(imagePath), validExtensions) )
 	{
 		status = parseConfig();
 
-		cv::Mat frame = cv::imread( processDir + "/" + imagePath );
+		cv::Mat frame = cv::imread( imagePath );
 		std::vector< cv::Rect > inImage;
 
 		std::vector<Detector*>::iterator dit = _detectors.begin();

@@ -279,7 +279,7 @@ bool HistValidator::validateBGRHist( cv::Mat hist1, cv::Mat hist2, int channel, 
 		if( isnan(value) || value <= _chiSqr[channel] )
 			result = true;
 		else
-			if(debug) std::cout << "Plate rejected by hsv histogram chiSqr in channel " << channel << ". whith value "
+			if(debug) std::cout << "Plate rejected by bgr histogram chiSqr in channel " << channel << ". whith value "
 			<< value << "." << std::endl;
 		break;
 	}

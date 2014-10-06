@@ -10,7 +10,9 @@ ColorValidator::ColorValidator( rapidxml::xml_node<> *node, std::string name, bo
 	std::string colorspace( node->first_node("colorspace")->value() );
 	_conversionFlag = ( colorspace=="hsv" )? CV_BGR2HSV : -1;
 
-	_areaThershold = atof(node->first_node("areaPercentage")->value());
+	rapidxml::xml_node<> *areaP = node->first_node("areaPercentage");
+	_minAreaThershold = atof(areaP->first_node("min")->value());
+	_maxAreaThershold = atof(areaP->first_node("max")->value());
 
 	rapidxml::xml_node<> *ranges = node->first_node("range");
 	for( ; ranges; ranges = ranges->next_sibling("range") )
@@ -55,9 +57,10 @@ bool ColorValidator::validate( cv::Mat pImage )
 
 		colorp += cv::countNonZero(color);
 	}
-	int areaT = (_areaThershold*convImg.size().area());
+	int minAreaT = (_minAreaThershold*convImg.size().area());
+	int maxAreaT = (_maxAreaThershold*convImg.size().area());
 
-	if( colorp < areaT )
+	if( colorp < minAreaT || colorp > maxAreaT )
 	{
 		result = false;
 		if(debug) std::cout << "Plate rejected by " << getName() << " filter. with result " << colorp

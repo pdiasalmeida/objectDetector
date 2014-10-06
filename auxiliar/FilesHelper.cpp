@@ -98,6 +98,15 @@ std::string FilesHelper::getFileName( std::string fullPath )
 	return result;
 }
 
+std::string FilesHelper::getDirName( std::string fullPath )
+{
+	int ini = fullPath.find_last_of( "/" );
+
+	std::string result = fullPath.substr( 0, ini );
+
+	return result;
+}
+
 std::string FilesHelper::getLeafDirName( std::string fullPath )
 {
 	int ini = fullPath.find_last_of( "/" );

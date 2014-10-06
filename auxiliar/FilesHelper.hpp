@@ -16,6 +16,7 @@ public:
 			const std::vector< std::string >& validExtensions );
 
 	static std::string getFileName( std::string fullPath);
+	static std::string getDirName( std::string fullPath );
 	static std::string getLeafDirName( std::string fullPath );
 	static bool fileAvailable( std::string dirName, std::string fileName, std::vector< std::string >& validExtensions );
 
