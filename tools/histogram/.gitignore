@@ -1,0 +1,7 @@
+*.txt
+*.o
+processHists
+*.jpg
+
+indication_signs/
+license_plates/

@@ -5,6 +5,7 @@
 
 # Temp. files
 *.swp
+*~
 
 # Built objects and executables
 *.o
