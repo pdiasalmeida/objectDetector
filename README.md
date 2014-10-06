@@ -31,8 +31,6 @@ At the moment the only detector implemented is a cascade classifier based detect
     Then we trained the cascade classifier with:
 
              opencv_traincascade -data classifier -vec samples.vec -bg negatives.txt -numStages 20 -minHitRate 0.999 -maxFalseAlarmRate 0.5 -numPos 345 -numNeg 643 -w 40 -h 16 -mode ALL -precalcValBufSize 2048 -precalcIdxBufSize 2048
-
-    The created '.vec' file and the cascade classifier originated are present in this repository.
     
 
 * SVM
