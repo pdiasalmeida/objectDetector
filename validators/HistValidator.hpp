@@ -7,9 +7,6 @@
 class HistValidator : Validator
 {
 public:
-	HistValidator( std::string name, int colorSpace, std::string path, double* correl,
-			double* inter, double* batta, bool debug );
-
 	HistValidator( rapidxml::xml_node<> *node, std::string name, bool debug );
 
 	virtual bool validate( cv::Mat pImage );
@@ -36,6 +33,7 @@ protected:
 	double _correl[3];
 	double _inter[3];
 	double _batta[3];
+	double _chiSqr[3];
 
 	cv::Mat histH, histS;
 	cv::Mat histB, histG, histR;

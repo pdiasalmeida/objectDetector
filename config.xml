@@ -13,7 +13,7 @@
     <aggregate>
         <scale>0.35</scale>
     </aggregate>
-    <path>/home/paulo/projects/infoportugal/objectdetector/ml/cascade/indication_signs/classifier/cascade.xml</path>
+    <path>/home/paulo/projects/infoportugal/objectdetectorIP/ml/cascade/indication_signs/classifier/cascade.xml</path>
     <scale>1.04</scale>
     <minNeighbours>6</minNeighbours>
     <minSize>
@@ -29,7 +29,7 @@
         <name>SVM_Validator</name>
         <width>64</width>
         <height>128</height>
-        <path>/home/paulo/projects/infoportugal/objectdetector/ml/svm/indication_signs/SVMClassifier.xml</path>
+        <path>/home/paulo/projects/infoportugal/objectdetectorIP/ml/svm/indication_signs/SVMClassifier.xml</path>
     </validator>
 </detector>
 <detector>
@@ -37,7 +37,7 @@
     <name>LicensePlateDetector</name>
     <output>Blurr</output>
     <annotate>1</annotate>
-    <path>/home/paulo/projects/infoportugal/objectdetector/ml/cascade/license_plates/old_dataset/classifier/cascade.xml</path>
+    <path>/home/paulo/projects/infoportugal/objectdetectorIP/ml/cascade/license_plates/old_dataset/classifier/cascade.xml</path>
     <scale>1.04</scale>
     <minNeighbours>6</minNeighbours>
     <minSize>
@@ -53,7 +53,7 @@
         <name>SVM_Validator</name>
         <width>64</width>
         <height>128</height>
-        <path>/home/paulo/projects/infoportugal/objectdetector/ml/svm/license_plates/old_dataset/SVMClassifier.xml</path>
+        <path>/home/paulo/projects/infoportugal/objectdetectorIP/ml/svm/license_plates/old_dataset/SVMClassifier.xml</path>
     </validator>
     <validator>
         <type>color</type>
@@ -91,7 +91,7 @@
         <type>histogram</type>
         <name>HSVHist_Validator</name>
         <colorspace>hsv</colorspace>
-        <path>/home/paulo/projects/infoportugal/objectdetector/tools/histogram/license_plates/hsvHist.xml</path>
+        <path>/home/paulo/projects/infoportugal/objectdetectorIP/tools/histogram/license_plates/hsvHist.xml</path>
         <Correlation>
             <ch0>-0.2</ch0>
             <ch1>0.05</ch1>
@@ -109,7 +109,7 @@
         <type>histogram</type>
         <name>BGRHist_Validator</name>
         <colorspace>bgr</colorspace>
-        <path>/home/paulo/projects/infoportugal/objectdetector/tools/histogram/license_plates/bgrHist.xml</path>
+        <path>/home/paulo/projects/infoportugal/objectdetectorIP/tools/histogram/license_plates/bgrHist.xml</path>
         <Correlation>
             <ch0>-0.65</ch0>
             <ch1>-0.71</ch1>
@@ -132,7 +132,7 @@
     <name>ProibSignDetector</name>
     <output>Draw</output>
     <annotate>1</annotate>
-    <path>/home/paulo/projects/infoportugal/objectdetector/ml/cascade/traffic_signs/proibClassifier/cascade.xml</path>
+    <path>/home/paulo/projects/infoportugal/objectdetectorIP/ml/cascade/traffic_signs/proibClassifier/cascade.xml</path>
     <scale>1.04</scale>
     <minNeighbours>6</minNeighbours>
     <minSize>
@@ -148,7 +148,7 @@
         <name>SVM_Validator</name>
         <width>64</width>
         <height>128</height>
-        <path>/home/paulo/projects/infoportugal/objectdetector/ml/svm/proib_signs/SVMValidator.xml</path>
+        <path>/home/paulo/projects/infoportugal/objectdetectorIP/ml/svm/proib_signs/SVMValidator.xml</path>
     </validator>
     <validator>
         <type>color</type>
@@ -198,12 +198,34 @@
         </range>
         <areaPercentage>0.08</areaPercentage>
     </validator>
+    <validator>
+        <type>histogram</type>
+        <name>HSVHist_Validator</name>
+        <colorspace>hsv</colorspace>
+        <path>/home/paulo/projects/infoportugal/objectdetectorIP/tools/histogram/proib_signs/hsvHist.xml</path>
+        <Correlation>
+            <ch0>-0.6</ch0>
+            <ch1>-0.65</ch1>
+        </Correlation>
+        <Intersection>
+            <ch0>0</ch0>
+            <ch1>14</ch1>
+        </Intersection>
+        <Batta>
+            <ch0>1</ch0>
+            <ch1>0.96</ch1>
+        </Batta>
+        <ChiSqr>
+            <ch0>6000</ch0>
+            <ch1>2e12</ch1>
+        </ChiSqr>
+    </validator>
     <classifier>
         <type>svm</type>
         <name>SVMClassifier</name>
         <width>64</width>
         <height>128</height>
-        <path>/home/paulo/projects/infoportugal/objectdetector/ml/svm/proib_signs/SVMClassifier.xml</path>
+        <path>/home/paulo/projects/infoportugal/objectdetectorIP/ml/svm/proib_signs/SVMClassifier.xml</path>
         <class>
             <name>slimit20</name>
             <id>0</id>

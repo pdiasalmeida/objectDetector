@@ -10,3 +10,6 @@
 # Built objects and executables
 *.o
 detectObjects
+
+# Images
+traffic/

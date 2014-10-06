@@ -4,7 +4,7 @@ CFLAGS =	-c -g -O0 -Wall `pkg-config --cflags opencv`
 
 LDFLAGS =	`pkg-config --libs opencv`
 
-SOURCES =	../auxiliar/FilesHelper.cpp \
+SOURCES =	../../auxiliar/FilesHelper.cpp \
 			processHists.cpp
 
 OBJECTS =	$(SOURCES:.cpp=.o)

@@ -4,20 +4,6 @@
 
 #include <iostream>
 
-HistValidator::HistValidator( std::string name, int colorSpace, std::string path, double correl[3],
-		double inter[3], double batta[3], bool debug ):
-	Validator(name, debug)
-{
-	_path = std::string(path);
-	_colorSpace = colorSpace;
-
-	std::copy(correl, correl + 3, _correl);
-	std::copy(inter, inter + 3, _inter);
-	std::copy(batta, batta + 3, _batta);
-
-	init();
-}
-
 HistValidator::HistValidator( rapidxml::xml_node<> *node, std::string name, bool debug ):
 		Validator(name, debug)
 {
@@ -41,6 +27,11 @@ HistValidator::HistValidator( rapidxml::xml_node<> *node, std::string name, bool
 		_batta[0] = atof(batt->first_node("ch0")->value());
 		_batta[1] = atof(batt->first_node("ch1")->value());
 		_batta[2] = -1;
+
+		rapidxml::xml_node<> *chiSrq = node->first_node("ChiSqr");
+		_chiSqr[0] = atof(chiSrq->first_node("ch0")->value());
+		_chiSqr[1] = atof(chiSrq->first_node("ch1")->value());
+		_chiSqr[2] = -1;
 	}
 	else
 	{
@@ -60,6 +51,12 @@ HistValidator::HistValidator( rapidxml::xml_node<> *node, std::string name, bool
 		_batta[0] = atof(batt->first_node("ch0")->value());
 		_batta[1] = atof(batt->first_node("ch1")->value());
 		_batta[2] = atof(batt->first_node("ch2")->value());
+
+		rapidxml::xml_node<> *chiSrq = node->first_node("ChiSqr");
+		_chiSqr[0] = atof(chiSrq->first_node("ch0")->value());
+		_chiSqr[1] = atof(chiSrq->first_node("ch1")->value());
+		_chiSqr[2] = atof(chiSrq->first_node("ch2")->value());
+
 	}
 
 	init();
@@ -107,7 +104,8 @@ bool HistValidator::validateHSVHist( cv::Mat image )
 
 	result = validateHSVHist(imageH, histH, 0, CV_COMP_CORREL) && validateHSVHist(imageS, histS, 1, CV_COMP_CORREL)
 			&& validateHSVHist(imageH, histH, 0, CV_COMP_INTERSECT) && validateHSVHist(imageS, histS, 1, CV_COMP_INTERSECT)
-			&& validateHSVHist(imageH, histH, 0, CV_COMP_BHATTACHARYYA) && validateHSVHist(imageS, histS, 1, CV_COMP_BHATTACHARYYA);
+			&& validateHSVHist(imageH, histH, 0, CV_COMP_BHATTACHARYYA) && validateHSVHist(imageS, histS, 1, CV_COMP_BHATTACHARYYA)
+			&& validateHSVHist(imageH, histH, 0, CV_COMP_CHISQR) && validateHSVHist(imageS, histS, 1, CV_COMP_CHISQR);
 
 	return result;
 }
@@ -124,7 +122,8 @@ bool HistValidator::validateBGRHist( cv::Mat image )
 			&& validateBGRHist(imageR, histR, 2, CV_COMP_CORREL) && validateBGRHist(imageB, histB, 0, CV_COMP_INTERSECT)
 			&& validateBGRHist(imageG, histG, 1, CV_COMP_INTERSECT) && validateBGRHist(imageR, histR, 2, CV_COMP_INTERSECT)
 			&& validateBGRHist(imageB, histB, 0, CV_COMP_BHATTACHARYYA) && validateBGRHist(imageG, histG, 1, CV_COMP_BHATTACHARYYA)
-			&& validateBGRHist(imageR, histR, 2, CV_COMP_BHATTACHARYYA);
+			&& validateBGRHist(imageR, histR, 2, CV_COMP_BHATTACHARYYA) && validateBGRHist(imageB, histB, 0, CV_COMP_CHISQR)
+			&& validateBGRHist(imageG, histG, 1, CV_COMP_CHISQR) && validateBGRHist(imageR, histR, 2, CV_COMP_CHISQR);
 
 	return result;
 }
@@ -206,6 +205,13 @@ bool HistValidator::validateHSVHist( cv::Mat hist1, cv::Mat hist2, int channel, 
 			if(debug) std::cout << "Plate rejected by hsv histogram batta in channel " << channel << ". whith value "
 			<< value << "." << std::endl;
 		break;
+	case CV_COMP_CHISQR:
+		if( isnan(value) || value <= _chiSqr[channel] )
+			result = true;
+		else
+			if(debug) std::cout << "Plate rejected by hsv histogram chiSqr in channel " << channel << ". whith value "
+			<< value << "." << std::endl;
+		break;
 	}
 
 	return result;
@@ -267,6 +273,13 @@ bool HistValidator::validateBGRHist( cv::Mat hist1, cv::Mat hist2, int channel, 
 			result = true;
 		else
 			if(debug) std::cout << "Plate rejected by bgr histogram batta in channel " << channel << ". whith value "
+			<< value << "." << std::endl;
+		break;
+	case CV_COMP_CHISQR:
+		if( isnan(value) || value <= _chiSqr[channel] )
+			result = true;
+		else
+			if(debug) std::cout << "Plate rejected by hsv histogram chiSqr in channel " << channel << ". whith value "
 			<< value << "." << std::endl;
 		break;
 	}
