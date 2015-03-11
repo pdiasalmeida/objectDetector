@@ -10,6 +10,7 @@ class FileWriter
 public:
 	static void openFile( std::string dirPath, std::string name );
 	static void writeToFile( std::string file, std::string content );
+	static void setFileContent( std::string filePath, std::string content );
 
 	static void close();
 

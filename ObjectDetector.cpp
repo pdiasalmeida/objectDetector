@@ -9,13 +9,15 @@
 
 #include "classifier/TemplateClassifier.hpp"
 #include "classifier/SVMClassifier.hpp"
+#include "classifier/FixedClassifier.hpp"
 
 #include "detectors/CascadeClassifierDetector.hpp"
 
+#include "data/FileDataStore.hpp"
+#include "data/PostgresDataStore.hpp"
+
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
-
-#include <tesseract/baseapi.h>
 
 #include <fstream>
 #include <sys/stat.h>
@@ -35,38 +37,11 @@ bool saveThumbs = false;
 double aggreScale = 0.0;
 
 std::vector< Detector* > _detectors;
+DataStore* ow = NULL;
 
-bool validateLetters( cv::Mat pImage )
+bool cmp(std::string a, std::string b)
 {
-	bool result = false;
-
-	tesseract::TessBaseAPI tess;
-	tess.Init( NULL, "por", tesseract::OEM_DEFAULT);
-	tess.SetVariable("tessedit_char_whitelist", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789");
-	tess.SetPageSegMode( tesseract::PSM_SINGLE_BLOCK);
-
-	cv::Mat gray;
-	cv::cvtColor( pImage, gray, CV_BGR2GRAY );
-	blur( gray, gray, cv::Size(3,3) );
-
-	cv::Mat _thresh;
-	threshold( gray, _thresh, 0, 255, CV_THRESH_OTSU+CV_THRESH_BINARY_INV );
-
-
-	tess.SetImage( (uchar*) _thresh.data, _thresh.cols, _thresh.rows, 1, _thresh.cols );
-	char* outc = tess.GetUTF8Text();
-
-	std::string out(outc);
-
-	if( (out.length() != 0) &&
-			abs((FilesHelper::countAlpha(out) - FilesHelper::countDigit(out)) >= 5) )
-	{
-		if(debug) std::cout << "Plate rejected by letter filter." << std::endl;
-	}
-	else
-		result = true;
-
-	return result;
+    return FilesHelper::getFileNameNoExt(a).compare(FilesHelper::getFileNameNoExt(b));
 }
 
 int getPreviousProgress()
@@ -77,7 +52,7 @@ int getPreviousProgress()
 	std::sort(processed.begin(), processed.end());
 
 	std::set_difference( fileNames.begin(), fileNames.end(), processed.begin(),
-			processed.end(), std::back_inserter(toProcess) );
+			processed.end(), std::back_inserter(toProcess), cmp );
 
 
 	return processed.size();
@@ -105,39 +80,11 @@ void saveDrawnResults( cv::Mat image, std::string name, std::vector< cv::Rect > 
 	std::vector< cv::Rect >::iterator it = foundplates.begin();
 	for( ; it != foundplates.end(); it++ )
 	{
-		cv::rectangle(image, *it, cv::Scalar(255 ,0 ,0), 2);
+		cv::rectangle(image, *it, cv::Scalar(255 ,0 ,0), 6);
 	}
 	cv::imwrite( outDir+"/"+FilesHelper::getFileName(name), image );
 
 	if(debug) std::cout << "Finished saving detector results." << std::endl;
-}
-
-void writeAnnotations( std::string name, std::string classe, std::vector< cv::Rect > objs )
-{
-	std::vector< cv::Rect >::iterator wf = objs.begin();
-	for( ; wf != objs.end(); wf++ )
-	{
-		std::stringstream ss;
-		ss << name << "," << classe << "," << wf->x << "," << wf->y << ","
-				<< wf->width << "," << wf->height;
-
-		ss << std::endl;
-		FileWriter::writeToFile( FilesHelper::getLeafDirName(processDir)+".dat", ss.str() );
-	}
-}
-
-void writeAnnotations( std::string name, std::vector< std::pair < cv::Rect, std::string > > objs )
-{
-	std::vector< std::pair < cv::Rect, std::string > >::iterator wf = objs.begin();
-	for( ; wf != objs.end(); wf++ )
-	{
-		std::stringstream ss;
-		ss << name << "," << wf->first.x << "," << wf->first.y << ","
-				<< wf->first.width << "," << wf->first.height << "," << wf->second;
-
-		ss << std::endl;
-		FileWriter::writeToFile( FilesHelper::getLeafDirName(processDir)+".dat", ss.str() );
-	}
 }
 
 int parseConfig()
@@ -154,7 +101,7 @@ int parseConfig()
 
 		char* buffer = new char[length];
 		configFile.read( buffer, length );
-
+ 
 		rapidxml::xml_document<> doc;
 		doc.parse<rapidxml::parse_full>(buffer);
 
@@ -168,9 +115,25 @@ int parseConfig()
 
 			FilesHelper::debug = debug;
 
+			rapidxml::xml_node<> *out = config->first_node("dataStore");
+			if(out)
+			{
+				std::string name = std::string(out->first_node("name")->value());
+				std::string type = std::string(out->first_node("type")->value());
+
+				if(type == "file")
+				{
+					ow = (DataStore*) new FileDataStore( name, processDir, outDir );
+				}
+				else if(type=="postgres")
+				{
+					ow = (DataStore*) new PostgresDataStore( out, name, processDir );
+				}
+			}
+
 			rapidxml::xml_node<> *detector = doc.first_node("detector");
 			for( ; detector; detector = detector->next_sibling("detector") )
-			{
+			{	
 				Detector* d;
 				std::string type = std::string(std::string(detector->first_node("type")->value()));
 				std::string name = std::string(std::string(detector->first_node("name")->value()));
@@ -195,8 +158,8 @@ int parseConfig()
 				if(outpt)
 				{
 					std::string outp = std::string(outpt->value());
-					if( outp=="Blurr" ) output = 0;
-					else if( outp=="Draw" ) output =1;
+					if( outp=="blu" ) output = 0;
+					else if( outp=="dra" ) output =1;
 				}
 
 				if( type == "cascade" )
@@ -210,9 +173,11 @@ int parseConfig()
 				rapidxml::xml_node<> *validator = detector->first_node("validator");
 				for( ; validator; validator = validator->next_sibling("validator") )
 				{
+					
 					Validator* v;
 					std::string type = std::string(validator->first_node("type")->value());
 					std::string name = std::string(validator->first_node("name")->value());
+
 					if( type == "svm" )
 					{
 						v = (Validator*) new SVMValidator(validator, name, debug);
@@ -230,42 +195,58 @@ int parseConfig()
 				}
 
 				rapidxml::xml_node<> *classifier = detector->first_node("classifier");
-				for( ; classifier; classifier = classifier->next_sibling("classifier") )
+                                if(classifier)
 				{
-					Classifier* c;
-					std::string type = std::string(std::string(classifier->first_node("type")->value()));
-					std::string name = std::string(std::string(classifier->first_node("name")->value()));
-
-					if( type == "template" )
+					for( ; classifier; classifier = classifier->next_sibling("classifier") )
 					{
-						TemplateClassifier* tc = new TemplateClassifier(classifier, name, debug);
+						Classifier* c;
+						std::string type = std::string(std::string(classifier->first_node("type")->value()));
+						std::string name = std::string(std::string(classifier->first_node("name")->value()));
 
-						rapidxml::xml_node<> *classe = classifier->first_node("class");
-						for( ; classe; classe = classe->next_sibling() )
+						if( type == "template" )
 						{
-							std::string className = std::string(classe->first_node("name")->value());
-							std::string classPath = std::string(classe->first_node("path")->value());
+							TemplateClassifier* tc = new TemplateClassifier(classifier, name, debug);
 
-							tc->addClass(className, classPath);
+							rapidxml::xml_node<> *classe = classifier->first_node("class");
+							for( ; classe; classe = classe->next_sibling() )
+							{
+								std::string className = std::string(classe->first_node("name")->value());
+								std::string classPath = std::string(classe->first_node("path")->value());
+
+								tc->addClass(className, classPath);
+							}
+							c = (Classifier*) tc;
 						}
-						c = (Classifier*) tc;
-					}
-					if( type == "svm" )
-					{
-						SVMClassifier* sc = new SVMClassifier(classifier, name, debug);
-
-						rapidxml::xml_node<> *classe = classifier->first_node("class");
-						for( ; classe; classe = classe->next_sibling("class") )
+						if( type == "svm" )
 						{
-							std::string className = std::string(classe->first_node("name")->value());
-							int classId = atoi(classe->first_node("id")->value());
+							SVMClassifier* sc = new SVMClassifier(classifier, name, debug);
 
-							sc->addClass(className, classId);
+							rapidxml::xml_node<> *classe = classifier->first_node("class");
+							for( ; classe; classe = classe->next_sibling("class") )
+							{
+								std::string className = std::string(classe->first_node("name")->value());
+								int classId = atoi(classe->first_node("id")->value());
+
+								sc->addClass(className, classId);
+							}
+							c = (Classifier*) sc;
 						}
-						c = (Classifier*) sc;
-					}
+						if( type == "fixed" )
+						{
+							std::cout << "aki" << std::endl;
+							FixedClassifier* fc = new FixedClassifier(classifier, name, debug);
 
-					d->setClassifier(c);
+							rapidxml::xml_node<> *classe = classifier->first_node("class");
+							for( ; classe; classe = classe->next_sibling("class") )
+							{
+								std::string className = std::string(classe->first_node("name")->value());
+								fc->addClass(className);
+							}
+							c = (Classifier*) fc;
+						}
+
+						d->setClassifier(c);
+					}
 				}
 			}
 
@@ -279,6 +260,8 @@ int parseConfig()
 	}
 
 	configFile.close();
+
+	if(!silent) std::cout << "Config file parsing finished successfuly." << std::endl;
 
 	return status;
 }
@@ -418,14 +401,14 @@ int processDirectory()
 
 			inImage.insert(inImage.end(), out.begin(), out.end());
 
-			if((*dit)->doAnnotate() && (*dit)->_classifier)
+			if((*dit)->doAnnotate() && (*dit)->_classifier && ow)
 			{
-				std::vector< std::pair< cv::Rect, std::string > > final = classify( *dit, frame, out );
-				writeAnnotations( *itFN, final );
+				std::vector< std::pair< cv::Rect, std::string > > finalOut = classify( *dit, frame, out );
+				ow->writeAnnotations( *itFN, finalOut );
 			}
-			else if((*dit)->doAnnotate())
+			else if((*dit)->doAnnotate() && ow)
 			{
-				writeAnnotations( *itFN, (*dit)->getName(), out );
+				ow->writeAnnotations( *itFN, (*dit)->getName(), out );
 			}
 
 			switch((*dit)->getOutputMethod())
@@ -473,14 +456,14 @@ int processImage( std::string imagePath )
 
 			inImage.insert(inImage.end(), out.begin(), out.end());
 
-			if((*dit)->doAnnotate() && (*dit)->_classifier)
+			if( (*dit)->doAnnotate() && (*dit)->_classifier && ow )
 			{
 				std::vector< std::pair< cv::Rect, std::string > > final = classify( *dit, frame, out );
-				writeAnnotations( imagePath, final );
+				ow->writeAnnotations( imagePath, final );
 			}
-			else if((*dit)->doAnnotate())
+			else if( (*dit)->doAnnotate() && ow )
 			{
-				writeAnnotations( imagePath, (*dit)->getName(), out );
+				ow->writeAnnotations( imagePath, (*dit)->getName(), out );
 			}
 
 			switch((*dit)->getOutputMethod())
@@ -511,15 +494,80 @@ void processFromFile( std::string path )
 	FilesHelper::printKeyValue(kValues);
 }
 
+int processFromMetadata()
+{
+	int status = parseConfig();
+
+	if( !processDir.empty() )
+	{
+		if(outDir.empty())
+		{
+			outDir = processDir + "_out";
+			if(!silent) std::cout << "No output directory given. Saving results to " << outDir << "." << std::endl;
+
+			mkdir(outDir.c_str(), 0777);
+		}
+
+		if( ow != NULL)
+		{
+			std::map< std::string, std::vector<std::pair<cv::Rect, std::string> > > ann = ow->getAnnotations(processDir);
+
+			FilesHelper::getFilesInDirectory( processDir, fileNames, validExtensions );
+			int n = getPreviousProgress();
+
+			std::vector< std::string >::iterator imgNameIt = toProcess.begin();
+			for( ; imgNameIt != toProcess.end(); imgNameIt++ )
+			{
+				std::map< std::string, std::vector<std::pair<cv::Rect, std::string> > >::iterator it =
+						ann.find(*imgNameIt);
+
+				if( it != ann.end() )
+				{
+					cv::Mat image = cv::imread(processDir+"/"+it->first);
+
+					std::vector<std::pair<cv::Rect, std::string> >::iterator obit = it->second.begin();
+					for( ; obit != it->second.end(); obit++ )
+					{
+						if( obit->second == "blurred" )
+						{
+							cv::Mat pObj = image(obit->first);
+							cv::GaussianBlur(pObj,pObj,cv::Size(15,15), 100.0);
+						}
+					}
+
+					cv::imwrite( outDir+"/"+it->first, image );
+				}
+				else
+				{
+					cv::Mat image = cv::imread(processDir+"/"+(*imgNameIt));
+					cv::imwrite( outDir+"/"+(*imgNameIt), image );
+				}
+			}
+		}
+		else
+		{
+			std::cout << "Please edit config to provide the data store." << std::endl;
+		}
+	}
+	else
+	{
+		std::cout << "Please provide the directory with the data to process." << std::endl;
+	}
+
+	return status;
+}
+
 int main( int argc, char** argv )
 {
 	int status = EXIT_SUCCESS;
+	bool fromMetadata = false;
 	std::string imagePath;
 	std::string infoFile;
 
 	validExtensions.push_back("jpg");
 	validExtensions.push_back("png");
 	validExtensions.push_back("ppm");
+	validExtensions.push_back("dat");
 
 	if( argc >= 2 )
 	{
@@ -558,12 +606,20 @@ int main( int argc, char** argv )
 			{
 				infoFile = std::string(argv[i+1]);
 			}
+			if( opt == "-m" )
+			{
+				fromMetadata = true;
+			}
 		}
 	}
 
-	if( imagePath.empty() && infoFile.empty() )
+	if( !processDir.empty() && !fromMetadata )
 	{
 		status = processDirectory();
+	}
+	else if( !processDir.empty() && fromMetadata )
+	{
+		status = processFromMetadata();
 	}
 	else if(!imagePath.empty())
 	{

@@ -5,58 +5,45 @@
 #include <iostream>
 
 HistValidator::HistValidator( rapidxml::xml_node<> *node, std::string name, bool debug ):
-		Validator(name, debug)
+Validator(name, debug)
 {
 	_path = std::string(node->first_node("path")->value());
+	_colorSpace = (std::string(node->first_node("colorspace")->value()) == "hsv") ? 0 : 1;
 
-	if( std::string(node->first_node("colorspace")->value()) == "hsv" )
+	rapidxml::xml_node<> *corr = node->first_node("Correlation");
+	if(corr)
 	{
-		_colorSpace = 0;
-
-		rapidxml::xml_node<> *corr = node->first_node("Correlation");
 		_correl[0] = atof(corr->first_node("ch0")->value());
 		_correl[1] = atof(corr->first_node("ch1")->value());
-		_correl[2] = -1;
-
-		rapidxml::xml_node<> *inter = node->first_node("Intersection");
-		_inter[0] = atof(inter->first_node("ch0")->value());
-		_inter[1] = atof(inter->first_node("ch1")->value());
-		_inter[2] = -1;
-
-		rapidxml::xml_node<> *batt = node->first_node("Batta");
-		_batta[0] = atof(batt->first_node("ch0")->value());
-		_batta[1] = atof(batt->first_node("ch1")->value());
-		_batta[2] = -1;
-
-		rapidxml::xml_node<> *chiSrq = node->first_node("ChiSqr");
-		_chiSqr[0] = atof(chiSrq->first_node("ch0")->value());
-		_chiSqr[1] = atof(chiSrq->first_node("ch1")->value());
-		_chiSqr[2] = -1;
+		_correl[2] = (_colorSpace==0)? -1 :
+				atof(corr->first_node("ch2")->value());
 	}
-	else
+
+	rapidxml::xml_node<> *inter = node->first_node("Intersection");
+	if(inter)
 	{
-		_colorSpace = 1;
-
-		rapidxml::xml_node<> *corr = node->first_node("Correlation");
-		_correl[0] = atof(corr->first_node("ch0")->value());
-		_correl[1] = atof(corr->first_node("ch1")->value());
-		_correl[2] = atof(corr->first_node("ch2")->value());
-
-		rapidxml::xml_node<> *inter = node->first_node("Intersection");
 		_inter[0] = atof(inter->first_node("ch0")->value());
 		_inter[1] = atof(inter->first_node("ch1")->value());
-		_inter[2] = atof(inter->first_node("ch2")->value());
+		_inter[2] = (_colorSpace==0)? -1 :
+				atof(inter->first_node("ch2")->value());
+	}
 
-		rapidxml::xml_node<> *batt = node->first_node("Batta");
+	rapidxml::xml_node<> *batt = node->first_node("Batta");
+	if(batt)
+	{
 		_batta[0] = atof(batt->first_node("ch0")->value());
 		_batta[1] = atof(batt->first_node("ch1")->value());
-		_batta[2] = atof(batt->first_node("ch2")->value());
+		_batta[2] = (_colorSpace==0)? -1 :
+				atof(batt->first_node("ch2")->value());
+	}
 
-		rapidxml::xml_node<> *chiSrq = node->first_node("ChiSqr");
+	rapidxml::xml_node<> *chiSrq = node->first_node("ChiSqr");
+	if(chiSrq)
+	{
 		_chiSqr[0] = atof(chiSrq->first_node("ch0")->value());
 		_chiSqr[1] = atof(chiSrq->first_node("ch1")->value());
-		_chiSqr[2] = atof(chiSrq->first_node("ch2")->value());
-
+		_chiSqr[2] = (_colorSpace==0)? -1 :
+				atof(chiSrq->first_node("ch2")->value());
 	}
 
 	init();
@@ -66,12 +53,12 @@ void HistValidator::init()
 {
 	switch(_colorSpace)
 	{
-		case 0:
-			getDataSetHSVHists( _path );
-			break;
-		case 1:
-			getDataSetBGRHists( _path );
-			break;
+	case 0:
+		getDataSetHSVHists( _path );
+		break;
+	case 1:
+		getDataSetBGRHists( _path );
+		break;
 	}
 }
 
@@ -103,9 +90,9 @@ bool HistValidator::validateHSVHist( cv::Mat image )
 	cv::Mat imageS = getHistHSVS(imgHSV);
 
 	result = validateHSVHist(imageH, histH, 0, CV_COMP_CORREL) && validateHSVHist(imageS, histS, 1, CV_COMP_CORREL)
-			&& validateHSVHist(imageH, histH, 0, CV_COMP_INTERSECT) && validateHSVHist(imageS, histS, 1, CV_COMP_INTERSECT)
-			&& validateHSVHist(imageH, histH, 0, CV_COMP_BHATTACHARYYA) && validateHSVHist(imageS, histS, 1, CV_COMP_BHATTACHARYYA)
-			&& validateHSVHist(imageH, histH, 0, CV_COMP_CHISQR) && validateHSVHist(imageS, histS, 1, CV_COMP_CHISQR);
+									&& validateHSVHist(imageH, histH, 0, CV_COMP_INTERSECT) && validateHSVHist(imageS, histS, 1, CV_COMP_INTERSECT)
+									&& validateHSVHist(imageH, histH, 0, CV_COMP_BHATTACHARYYA) && validateHSVHist(imageS, histS, 1, CV_COMP_BHATTACHARYYA)
+									&& validateHSVHist(imageH, histH, 0, CV_COMP_CHISQR) && validateHSVHist(imageS, histS, 1, CV_COMP_CHISQR);
 
 	return result;
 }
@@ -119,11 +106,11 @@ bool HistValidator::validateBGRHist( cv::Mat image )
 	cv::Mat imageR = getHistBGRC( image, 2 );
 
 	result = validateBGRHist(imageB, histB, 0, CV_COMP_CORREL) && validateBGRHist(imageG, histG, 1, CV_COMP_CORREL)
-			&& validateBGRHist(imageR, histR, 2, CV_COMP_CORREL) && validateBGRHist(imageB, histB, 0, CV_COMP_INTERSECT)
-			&& validateBGRHist(imageG, histG, 1, CV_COMP_INTERSECT) && validateBGRHist(imageR, histR, 2, CV_COMP_INTERSECT)
-			&& validateBGRHist(imageB, histB, 0, CV_COMP_BHATTACHARYYA) && validateBGRHist(imageG, histG, 1, CV_COMP_BHATTACHARYYA)
-			&& validateBGRHist(imageR, histR, 2, CV_COMP_BHATTACHARYYA) && validateBGRHist(imageB, histB, 0, CV_COMP_CHISQR)
-			&& validateBGRHist(imageG, histG, 1, CV_COMP_CHISQR) && validateBGRHist(imageR, histR, 2, CV_COMP_CHISQR);
+									&& validateBGRHist(imageR, histR, 2, CV_COMP_CORREL) && validateBGRHist(imageB, histB, 0, CV_COMP_INTERSECT)
+									&& validateBGRHist(imageG, histG, 1, CV_COMP_INTERSECT) && validateBGRHist(imageR, histR, 2, CV_COMP_INTERSECT)
+									&& validateBGRHist(imageB, histB, 0, CV_COMP_BHATTACHARYYA) && validateBGRHist(imageG, histG, 1, CV_COMP_BHATTACHARYYA)
+									&& validateBGRHist(imageR, histR, 2, CV_COMP_BHATTACHARYYA) && validateBGRHist(imageB, histB, 0, CV_COMP_CHISQR)
+									&& validateBGRHist(imageG, histG, 1, CV_COMP_CHISQR) && validateBGRHist(imageR, histR, 2, CV_COMP_CHISQR);
 
 	return result;
 }
